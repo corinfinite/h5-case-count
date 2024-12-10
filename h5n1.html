@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Count Timeline</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        .chart-container {
+            width: 90%;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('myChart').getContext('2d');
+        
+        // Calculate cumulative sums
+        function getCumulativeData(data) {
+            let sum = 0;
+            return data.map(point => ({
+                x: point.x,
+                y: (sum += point.y)
+            }));
+        }
+
+        // Monthly data points (date, value)
+        // Past Reported Global Human Cases with Highly Pathogenic Avian Influenza A(H5N1) (HPAI H5N1) by Country, 1997-2024
+        // https://www.cdc.gov/bird-flu/php/avian-flu-summary/chart-epi-curve-ah5n1.html
+        //
+        // What does the date mean here?
+        // The data is not clear. In the CSV the Month column contains the date of the first of the month.
+        // In the web UI, the date is referred to as "Date Reported"
+        // Assuming the date is actually the date the results were reported I've
+        // opted to keep them as is. Presumably the 
+        const monthlyData = [
+            { x: '2024-01-01', y: 0 },
+            { x: '2024-02-01', y: 0 },
+            { x: '2024-03-01', y: 0 },
+            { x: '2024-04-01', y: 1 },
+            { x: '2024-05-01', y: 2 },
+            { x: '2024-06-01', y: 0 },
+            { x: '2024-07-01', y: 10 },
+            { x: '2024-08-01', y: 0 },
+            { x: '2024-09-01', y: 1 },
+            { x: '2024-10-01', y: 13 }
+        ];
+
+        // Weekly data points
+        // Public health laboratory reporting
+        // Influenza Positive Tests Reported to CDC by Public Health Laboratories, National Summary, 2024-25 Season, week ending Nov 23, 2024
+        // https://www.cdc.gov/bird-flu/h5-monitoring/index.html
+
+        /*
+From https://www.cdc.gov/bird-flu/h5-monitoring/index.html
+> *This graph reflects the number of specimens tested and the number determined 
+> to be positive for influenza viruses at the public health lab (specimens tested 
+> is not the same as cases). It does not reflect specimens tested only at CDC and
+> could include more than one specimen tested per person. Specimens tested as part
+> of routine influenza surveillance as well as those tested as part of targeted
+> testing for people exposed to influenza A(H5) are included.
+
+From https://www.cdc.gov/fluview/overview/index.html#cdc_generic_section_2-virologic-surveillance
+> All public health and clinical laboratories report each week to CDC the total number of respiratory specimens tested for influenza and the number positive for influenza viruses, along with age or age group of the person, if available. CDC presents data from clinical laboratories that include the weekly total number of specimens tested for influenza, the number of positive influenza tests, and the percent positive by influenza virus type. For public health laboratories, CDC presents the weekly total number of specimens tested and the number positive by influenza virus type and subtype/lineage. In order to obtain specimens in an efficient manner, public health laboratories often receive samples that have already tested positive for influenza at a clinical laboratory. As a result, monitoring the percent of specimens testing positive for influenza in a public health laboratory is less useful (i.e., we expect a higher percent positive than what is actually occurring in the community). In order to use each data source most appropriately and to avoid duplication, reports from public health and clinical laboratories are presented separately in both FluView and FluView Interactive.
+
+Should the date be the beginning of the week or the end? For our first pass I opted
+for beginning of the week, but there aren't really any hints. If these are the amount
+of results for that week, then should we pick the middle or the end?
+*/
+        const weeklyData = [
+            { x: '2024-05-20', y: 0 }, // Week 20
+            { x: '2024-05-27', y: 1 }, // Week 21
+            { x: '2024-06-03', y: 0 }, // Week 22
+            { x: '2024-06-10', y: 0 }, // Week 23
+            { x: '2024-06-17', y: 0 }, // Week 24
+            { x: '2024-06-24', y: 0 }, // Week 25
+            { x: '2024-07-01', y: 0 }, // Week 26
+            { x: '2024-07-08', y: 0 }, // Week 27
+            { x: '2024-07-15', y: 8 }, // Week 28
+            { x: '2024-07-22', y: 2 }, // Week 29
+            { x: '2024-07-29', y: 1 }, // Week 30
+            { x: '2024-08-05', y: 0 }, // Week 
+            { x: '2024-08-12', y: 0 }, // Week 
+            { x: '2024-08-19', y: 0 }, // Week 
+            { x: '2024-08-26', y: 1 }, // Week 
+            { x: '2024-09-02', y: 0 }, // Week 
+            { x: '2024-09-09', y: 0 }, // Week 
+            { x: '2024-09-16', y: 0 }, // Week 
+            { x: '2024-09-23', y: 0 }, // Week 
+            { x: '2024-09-30', y: 0 }, // Week 
+            // Note: 2024-2025 Season starts here
+            { x: '2024-10-07', y: 4 }, // Week 40
+            { x: '2024-10-14', y: 16 }, // Week 41
+            { x: '2024-10-21', y: 13 }, // Week 42
+            { x: '2024-10-28', y: 10 }, // Week 43
+            { x: '2024-11-04', y: 4 }, // Week 44
+            { x: '2024-11-11', y: 5 }, // Week 45
+            { x: '2024-11-18', y: 5 }, // Week 46
+            { x: '2024-11-25', y: 4 }, // Week 47
+            { x: '2024-12-02', y: 4 } // Week 48
+
+        ];
+
+        const cumulativeMonthlyData = getCumulativeData(monthlyData);
+        const cumulativeWeeklyData = getCumulativeData(weeklyData);
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'A(H5) Cases (Public health laboratory reporting)',
+                    data: cumulativeWeeklyData,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgb(75, 192, 192)',
+                    pointRadius: 3,
+                    tension: 0.1
+                }, {
+                    label: 'HPAI H5N1 Cases',
+                    data: cumulativeMonthlyData,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgb(255, 99, 132)',
+                    pointRadius: 5,
+                    pointStyle: 'triangle',
+                    showLine: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'month'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Cumulative Test Count'
+                        },
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Cumulative Test Counts (2024)'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
